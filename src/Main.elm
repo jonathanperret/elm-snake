@@ -1,27 +1,25 @@
 module Main exposing (..)
 
 import Color as ElmColor
+import List
+import Maybe
 import Playground exposing (Computer, Shape, circle, game, move, rectangle, red, rgb, toX, toY)
 
 
 type alias Snake =
     { length : Int
-    , x : Float
-    , y : Float
     , segments : List { x : Float, y : Float }
-    , xspeed : Float
-    , yspeed : Float
+    , direction : { x : Float, y : Float }
+    , speed : Float
     }
 
 
 initialSnake : Snake
 initialSnake =
-    { length = 500
-    , x = 0
-    , y = 0
-    , segments = [ { x = -100.0, y = 20.0 } ]
-    , xspeed = 0.0
-    , yspeed = 0.0
+    { length = 50
+    , segments = [ { x = 0.0, y = 0.0 } ]
+    , direction = { x = 1, y = 0 }
+    , speed = 2.0
     }
 
 
@@ -46,23 +44,78 @@ snakeColor =
 
 
 view : Computer -> Snake -> List Shape
-view computer { x, y } =
-    [ rectangle backgroundColor computer.screen.width computer.screen.height
-    , circle snakeColor 20 |> move x y
-    ]
+view computer snake =
+    rectangle backgroundColor computer.screen.width computer.screen.height
+        :: List.map viewSegment snake.segments
+
+
+viewSegment { x, y } =
+    circle snakeColor 20 |> move x y
 
 
 update : Computer -> Snake -> Snake
 update computer snake =
+    let
+        { x, y } =
+            List.head snake.segments
+                |> Maybe.withDefault { x = 0, y = 0 }
+
+        arrows =
+            [ computer.keyboard.up
+            , computer.keyboard.down
+            , computer.keyboard.left
+            , computer.keyboard.right
+            ]
+
+        ( dx, dy ) =
+            ( toX computer.keyboard, toY computer.keyboard )
+
+        direction =
+            case arrows of
+                [ True, False, False, False ] ->
+                    if snake.direction.y < 0 then
+                        snake.direction
+
+                    else
+                        { x = 0, y = 1 }
+
+                [ False, True, False, False ] ->
+                    if snake.direction.y > 0 then
+                        snake.direction
+
+                    else
+                        { x = 0, y = -1 }
+
+                [ False, False, True, False ] ->
+                    if snake.direction.x > 0 then
+                        snake.direction
+
+                    else
+                        { x = -1, y = 0 }
+
+                [ False, False, False, True ] ->
+                    if snake.direction.x < 0 then
+                        snake.direction
+
+                    else
+                        { x = 1, y = 0 }
+
+                _ ->
+                    snake.direction
+    in
     { snake
-        | x =
-            snake.x
-                + snake.xspeed
-                |> clamp (-computer.screen.width / 2) (computer.screen.width / 2)
-        , y =
-            snake.y
-                + snake.yspeed
-                |> clamp (-computer.screen.height / 2) (computer.screen.height / 2)
-        , xspeed = snake.xspeed + toX computer.keyboard
-        , yspeed = snake.yspeed + toY computer.keyboard
+        | segments =
+            { x =
+                x
+                    + snake.direction.x
+                    * snake.speed
+                    |> clamp (-computer.screen.width / 2) (computer.screen.width / 2)
+            , y =
+                y
+                    + snake.direction.y
+                    * snake.speed
+                    |> clamp (-computer.screen.height / 2) (computer.screen.height / 2)
+            }
+                :: List.take snake.length snake.segments
+        , direction = direction
     }
