@@ -9,6 +9,7 @@ import Playground exposing (Computer, Shape, circle, game, move, rectangle, red,
 type alias Snake =
     { length : Int
     , segments : List { x : Float, y : Float }
+    , newdirection : { x : Float, y : Float }
     , direction : { x : Float, y : Float }
     , speed : Float
     }
@@ -16,10 +17,11 @@ type alias Snake =
 
 initialSnake : Snake
 initialSnake =
-    { length = 50
+    { length = 150
     , segments = [ { x = 0.0, y = 0.0 } ]
+    , newdirection = { x = 1, y = 0 }
     , direction = { x = 1, y = 0 }
-    , speed = 2.0
+    , speed = 2
     }
 
 
@@ -43,14 +45,33 @@ snakeColor =
     hsl 0.4 0.6 0.5
 
 
+gridSize =
+    50
+
+
 view : Computer -> Snake -> List Shape
 view computer snake =
     rectangle backgroundColor computer.screen.width computer.screen.height
         :: List.map viewSegment snake.segments
+        ++ viewHead snake
+
+eyePos = 5
+
+viewHead { segments, newdirection } =
+    case segments of
+        { x, y } :: _ ->
+            [ circle (rgb 0 0 0) 10 |> move (x + eyePos * newdirection.x) (y + eyePos * newdirection.y) ]
+
+        [] ->
+            []
 
 
 viewSegment { x, y } =
-    circle snakeColor 20 |> move x y
+    circle snakeColor (gridSize * 0.4) |> move x y
+
+
+snap x =
+    x / gridSize |> truncate |> (*) gridSize |> toFloat
 
 
 update : Computer -> Snake -> Snake
@@ -67,10 +88,13 @@ update computer snake =
             , computer.keyboard.right
             ]
 
-        ( dx, dy ) =
-            ( toX computer.keyboard, toY computer.keyboard )
+        onGrid =
+            modBy gridSize (round x)
+                == 0
+                && modBy gridSize (round y)
+                == 0
 
-        direction =
+        newdirection =
             case arrows of
                 [ True, False, False, False ] ->
                     if snake.direction.y < 0 then
@@ -101,21 +125,29 @@ update computer snake =
                         { x = 1, y = 0 }
 
                 _ ->
-                    snake.direction
+                    snake.newdirection
+
+        direction =
+            if onGrid then
+                snake.newdirection
+
+            else
+                snake.direction
     in
     { snake
         | segments =
             { x =
                 x
-                    + snake.direction.x
+                    + direction.x
                     * snake.speed
-                    |> clamp (-computer.screen.width / 2) (computer.screen.width / 2)
+                    |> clamp (-computer.screen.width / 2 |> snap) (computer.screen.width / 2 |> snap)
             , y =
                 y
-                    + snake.direction.y
+                    + direction.y
                     * snake.speed
-                    |> clamp (-computer.screen.height / 2) (computer.screen.height / 2)
+                    |> clamp (-computer.screen.height / 2 |> snap) (computer.screen.height / 2 |> snap)
             }
                 :: List.take snake.length snake.segments
+        , newdirection = newdirection
         , direction = direction
     }
