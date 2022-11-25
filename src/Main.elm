@@ -3,7 +3,7 @@ module Main exposing (..)
 import Color as ElmColor
 import List
 import Maybe
-import Playground exposing (Computer, Shape, circle, game, move, rectangle, red, rgb, toX, toY)
+import Playground exposing (circle, Computer, game, move, rectangle, red, rgb, Shape)
 
 
 type alias Snake =
@@ -55,7 +55,10 @@ view computer snake =
         :: List.map viewSegment snake.segments
         ++ viewHead snake
 
-eyePos = 5
+
+eyePos =
+    5
+
 
 viewHead { segments, newdirection } =
     case segments of
